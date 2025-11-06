@@ -1,73 +1,119 @@
-# NVIDIA SASS Lessons
+# NVIDIA SASS Assembly Lessons
 
-**Goal:** A high‑quality, hands‑on set of lessons that teach NVIDIA GPU *SASS* (machine code) concepts by compiling small CUDA kernels, then inspecting their disassembly with `nvdisasm` (and/or `cuobjdump`).
+Learn GPU assembly through interactive tutorials and hands-on exploration of NVIDIA SASS code.
 
-> **What you’ll actually do**: Write a tiny CUDA kernel → compile to a `.cubin` for a target architecture (e.g. `sm_80`) → disassemble to SASS → read and reason about the instruction stream (predicates, control flow, memory ops, etc.).
+![Demo](assets/lesson1_demo.gif)
 
----
+## Quick Start
 
-## Quick start
-
-### Option 1: Local CUDA Toolkit (no GPU required to compile)
-1. Install the CUDA Toolkit (12.x or newer) so that `nvcc`, `ptxas`, `nvdisasm`, and `cuobjdump` are on your `PATH`.
-2. Clone this repo.
-3. Build and disassemble all lessons (default arch `sm_80`):
-   ```bash
-   SASS_ARCH=sm_80 bash scripts/build.sh
-   ```
-4. Open the generated files in `disasm/` and compare `O0` vs `O3` outputs.
-
-### Option 2: Docker (fully reproducible on any host)
 ```bash
-bash scripts/docker-build.sh               # uses nvidia/cuda:devel image
-# artifacts appear in ./disasm
+# Setup
+git clone https://github.com/yuninxia/nvidia-sass-lessons.git
+cd nvidia-sass-lessons
+python3.11 -m venv .venv
+source .venv/bin/activate
+pip install -e .
+
+# Start learning
+sass-dissect                      # Interactive menu
+sass-dissect --lesson 1 tutorial  # Start lesson 1
 ```
 
-> **Note**: No GPU is needed to *compile* kernels and produce SASS. A GPU is only needed to run kernels.
+## What You'll Learn
+
+| # | Topic | Key Concepts |
+|---|-------|-------------|
+| 01 | **Vector Addition** | Basic GPU ops, memory load/store |
+| 02 | **Memory Patterns** | Coalesced vs strided access |
+| 03 | **Shared Memory** | Tiling, barriers, LDS/STS |
+| 04 | **Predication** | Conditional execution without branching |
+| 05 | **Control Flow** | Loops, branches, divergence |
+| 06 | **Warp Shuffles** | Register data exchange |
+| 07 | **Atomics** | Global atomic operations |
+| 08 | **Barriers** | Block synchronization |
+| 09 | **Special Registers** | Thread/block IDs, lane IDs |
+
+## Three Ways to Learn
+
+### 1. Interactive Tutorial
+```bash
+sass-dissect --lesson 1 tutorial            # Step-by-step concepts
+```
+Press ENTER to advance. Learn GPU basics before diving into code.
+
+### 2. SASS Explorer
+```bash
+sass-dissect --lesson 1 explore             # Unoptimized code
+sass-dissect --lesson 1 explore --optimized # Optimized code
+```
+Browse real SASS assembly with line-by-line explanations.
+
+### 3. Build & Analyze
+```bash
+sass-dissect build                          # Compile to SASS
+cat disasm/lesson_01.sm_80.O0.sass        # View raw output
+diff disasm/lesson_01.sm_80.O0.sass \     # Compare optimization
+     disasm/lesson_01.sm_80.O3.sass
+```
+
+## Commands
+
+| Command | Description |
+|---------|------------|
+| `sass-dissect` | Interactive menu |
+| `sass-dissect list` | Show all lessons |
+| `sass-dissect build` | Build SASS files |
+| `sass-dissect --lesson N tutorial` | Start tutorial for lesson N |
+| `sass-dissect --lesson N explore` | Explore SASS for lesson N |
+
+## GPU Architecture Support
+
+```bash
+SASS_ARCH=sm_75 sass-dissect build  # Turing (RTX 20xx)
+SASS_ARCH=sm_80 sass-dissect build  # Ampere (RTX 30xx, A100) [default]
+SASS_ARCH=sm_89 sass-dissect build  # Ada (RTX 40xx)
+SASS_ARCH=sm_90 sass-dissect build  # Hopper (H100)
+```
+
+## Example Learning Flow
+
+```bash
+# 1. Learn concepts
+sass-dissect --lesson 1 tutorial
+
+# 2. See real code
+sass-dissect --lesson 1 explore
+
+# 3. Compare optimization
+sass-dissect --lesson 1 explore --optimized
+
+# 4. Experiment
+vim lesson_01/kernel.cu
+sass-dissect build
+sass-dissect --lesson 1 explore  # See your changes
+```
+
+## Requirements
+
+- **Option 1**: CUDA Toolkit 12.x+ (for local builds)
+- **Option 2**: Docker (no CUDA needed)
+  ```bash
+  bash scripts/docker-build.sh
+  ```
+- **Python**: 3.8+ (3.11 recommended)
+
+## Key Features
+
+- **Interactive Learning** - Press ENTER to advance, no info overload
+- **Real SASS Code** - See actual GPU assembly, not just theory
+- **Optimization Comparison** - Understand compiler optimizations
+- **Multiple GPU Archs** - Support from Turing to Hopper
+- **Extensible** - Add your own lessons easily
+
+## Resources
+
+See [docs/links.md](docs/links.md) for useful tools and documentation.
 
 ---
 
-## Lessons overview
-
-Each `lesson_XX/` folder contains a minimal `kernel.cu` and a short `lesson.md` to guide what to look for in the SASS listing.
-
-1. **01_add** – Warm‑up vector add; see basic `LDG/STG` and arithmetic.
-2. **02_memory** – Coalesced vs strided accesses; observe load/store patterns.
-3. **03_shared_mem** – Shared memory tiling; note `LDS/STS`, barriers.
-4. **04_predication** – `if`/`else` turns into predicate registers and guarded ops.
-5. **05_control_flow** – Loops and branches (`SSY`, `BRA`, divergence).
-6. **06_shuffle** – Warp shuffles (`__shfl_sync`) and register moves.
-7. **07_atomics** – Global atomics (`ATOMG`/`RED` forms depending on arch).
-8. **08_barrier** – `__syncthreads` and memory ordering at block scope.
-9. **09_special_regs** – Read `%laneid` via inline PTX; map to SASS usage.
-
-> Heads‑up: SASS is **architecture‑specific**. Use `SASS_ARCH=sm_75|sm_80|sm_86|sm_89|sm_90…`. Outputs will differ by arch and by optimization level.
-
----
-
-## Build scripts
-
-- `scripts/build.sh` compiles every lesson twice (with `-O0` and `-O3`) for `${SASS_ARCH:-sm_80}`, emitting:
-  - `build/<lesson>.<arch>.O*.cubin`
-  - `disasm/<lesson>.<arch>.O*.sass`
-
-- `scripts/clean.sh` removes build artifacts.
-- `scripts/docker-build.sh` runs the build inside an NVIDIA CUDA *devel* container (no GPU required).
-
-The GitHub Actions workflow mirrors this setup and uploads the `disasm/` directory as an artifact on every push/PR.
-
----
-
-## Tools you’ll use
-
-- **nvdisasm** – disassemble `.cubin` files to SASS and print line info.
-- **cuobjdump** – extract PTX and SASS from host binaries (optional).
-- **nvcc/ptxas** – compile CUDA C++ to cubin.
-
-> We also link to community **unofficial SASS assemblers** in `docs/links.md` if you want to go beyond disassembly. Not required for these lessons.
-
----
-
-## Contributing
-
-PRs adding new bite‑sized lessons are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for style and review guidelines, and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+**Ready to understand how GPUs really work?** Start with: `sass-dissect --lesson 1 tutorial`

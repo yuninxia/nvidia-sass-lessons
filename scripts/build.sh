@@ -11,7 +11,7 @@ command -v nvdisasm >/dev/null 2>&1 || { echo "nvdisasm not found on PATH"; exit
 
 mkdir -p build disasm
 
-for lesson in lesson_* lessons/*; do
+for lesson in sass_lessons/lessons/lesson_*; do
   [ -d "$lesson" ] || continue
   base="$(basename "$lesson")"
   src="$lesson/kernel.cu"

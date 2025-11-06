@@ -7,3 +7,9 @@
 .DS_Store
 .vscode/
 .idea/
+
+.venv/
+nvidia_sass_lessons.egg-info/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
