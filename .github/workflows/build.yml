@@ -1,0 +1,26 @@
+name: build-and-disassemble
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: nvidia/cuda:12.4.1-devel-ubuntu22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain versions
+        run: |
+          nvcc --version
+          nvdisasm --version || true
+      - name: Build all lessons (sm_80 by default)
+        env:
+          SASS_ARCH: ${{ vars.SASS_ARCH || 'sm_80' }}
+        run: bash scripts/build.sh
+      - name: Upload SASS disassembly
+        uses: actions/upload-artifact@v4
+        with:
+          name: sass-disassembly
+          path: disasm/
